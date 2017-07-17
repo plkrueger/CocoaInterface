@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>squiggle</string>
+			</array>
+			<key>CFBundleTypeIconFile</key>
+			<string>squiggle.icns</string>
+			<key>CFBundleTypeName</key>
+			<string>Squiggle Document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.clozure.ftype.squiggle</string>
+			</array>
+			<key>NSDocumentClass</key>
+			<string>SquiggleDoc</string>
+			<key>NSExportableTypes</key>
+			<array>
+				<string>com.clozure.ftype.squiggle</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleExecutable</key>
+	<string>sgl</string>
+	<key>CFBundleIconFile</key>
+	<string>squiggle.icns</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.clozure.apps.squigg</string>
+	<key>CFBundleName</key>
+	<string>Squiggle</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleSignature</key>
+	<string>sqgl</string>
+	<key>CFBundleVersion</key>
+	<string>1.0</string>
+	<key>CLMainFunc</key>
+	<string>sq::init-squiggle-app</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>10.7</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.content</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Squiggle Document</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.clozure.ftype.squiggle</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>squiggle</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+</dict>
+</plist>

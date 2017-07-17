@@ -1,0 +1,5 @@
+*.lisp~
+*.asd~
+*.lapp
+README.rtf
+gitignore
