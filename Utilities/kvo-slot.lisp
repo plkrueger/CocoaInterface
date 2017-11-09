@@ -23,9 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 |#
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (require :undo)
-  (require :ns-object-utils)
-  (require :binding-utils))
+  (require :undo))
 
 (in-package :ccl)
 (export 

@@ -28,9 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   (require :nslog-utils)
   (require :date)
   (require :alert)
-  (require :decimal)
-  (require :assoc-array)
-  (require :attributed-strings))
+  (require :decimal))
 
 (in-package :iu)
 

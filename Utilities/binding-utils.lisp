@@ -28,19 +28,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   (require :coerce-obj)
   (require :nslog-utils)
   (require :kvo-slot)
-  (require :selector-utils)
-  (require :assoc-array))
+  (require :selector-utils))
 
 (defgeneric lc::modified-bound-value (controller edited-obj key old-val new-val))
 
 (in-package :iu)
-
-;; debugging facility
-
-(defvar *log-bindings* nil)
-
-(defun log-bindings (&optional (on-off t))
-  (setf *log-bindings* on-off))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Miscellaneous utility functions
@@ -84,116 +76,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                  (push (subseq path-str begin end) words)))
          ((>= end (length path-str))
           (mapcar #'objc-to-lisp-keypathname (nreverse words))))))
-
-(defmacro objc-method-for (meth-name lisp-meth)
-  (let ((meth-sym (gentemp))
-        (lisp-fun (gentemp)))
-    `(let ((,meth-sym  (intern (symbol-name ,meth-name) (find-package :nextstep-functions)))
-           (,lisp-fun ,lisp-meth))
-       (eval `(objc:defmethod (,,meth-sym :id)
-                              ((self ns:ns-object))
-                ;; ns:ns-object is always passed, never a null pointer, but if a null object
-                ;; needs to be passed it will encoded as a lisp-point-wrapper pointinG to nil. 
-                ;; So lisp functions must always be prepared to get nil as an argument.
-                ;; Return value is always a wrapper so that when converted back to lisp we
-                ;; get what was intended.
-                (wrapper-for (funcall ,,lisp-fun (coerce-obj self t))))))))
-
-(let ((path-trans (make-instance 'assoc-array :rank 2 :tests '(eql equal))))
-
-  (defun objc-to-lisp-keypathname (name-str)
-    ;; translate a name from Objective-C to Lisp
-    ;; Use standard translation for function/slot names except the use of 
-    ;; underscore (#\_) is used initially to delimit a package specifier
-    (let* ((package-end (if (char= (elt name-str 0) #\_)
-                          (position #\_ name-str :start 1)))
-           (pkg-string (string-upcase (subseq name-str 1 package-end)))
-           (path-string (if package-end 
-                          (subseq name-str (1+ package-end))
-                          name-str))
-           (pkg (or (and package-end
-                         (find-package pkg-string))
-                    (find-package :cl-user))))
-      ;; cache the string we are translating so that we can reverse
-      ;; translate to exactly the same string used by the developer.
-      (setf (assoc-aref path-trans pkg path-string) name-str)
-      (ccl::compute-lisp-name path-string pkg)))
-  
-  (defun lisp-to-objc-keypathname (name)
-    ;; translate name (symbol or string or function) from Lisp to Objective-C
-    ;; If we previously cached a string that came from Objective-C and
-    ;; was translated to this name, then translate back to it. This
-    ;; prevents problems caused by alternative package names/nicknames
-    ;; that the developer might have used in Interface Builder.
-    ;; Use standard translation for function/slot names except prefix
-    ;; package name and underscore if package is not cl-user
-   
-    (if (functionp name)
-      (find-or-make-func-keypath name)
-      (let ((pkg (if (symbolp name)
-                   (symbol-package name)
-                   (find-package :cl-user)))
-            (name-str (string name))
-            (name-segments nil))
-        (or (assoc-aref path-trans pkg name-str)
-            (progn
-              (do* ((start 0 (1+ pos))
-                    (pos (position #\- name-str)
-                         (position #\- name-str :start start)))
-                   ((null pos) (setf name-segments (nreverse (cons (subseq name-str start) name-segments))))
-                (setf name-segments (cons (subseq name-str start pos) name-segments)))
-              (setf name-segments (cons (string-downcase (first name-segments))
-                                        (mapcar #'string-capitalize (rest name-segments))))
-              (unless (eq pkg (find-package :cl-user))
-                (setf name-segments (cons (concatenate 'string
-                                                       "_"
-                                                       (lisp-to-objc-keypathname (or (first (package-nicknames pkg))
-                                                                                     (package-name pkg)))
-                                                       "_")
-                                          name-segments)))
-              (apply #'concatenate 'string name-segments))))))
-
-  (defun find-or-make-func-keypath (lisp-func)
-    ;; find a previously made symbol corresponding to the lisp object if it exists, or create one
-    ;; Cache so we can easity translate in both directions.
-    ;; Create an objc method that converts an objc argument to lisp, applies the method, and
-    ;; converts it back to objc. This lets lisp functions be used as intermediate path elements
-    ;; for bindings.
-    (or (assoc-aref path-trans lisp-func nil)
-        (let* ((sym-package (find-package :cl-user))
-               (sym (gentemp "Trans" sym-package))
-               (sym-name (symbol-name sym)))
-          (setf (assoc-aref path-trans sym-package sym-name) lisp-func)
-          (setf (assoc-aref path-trans lisp-func nil) sym-name)
-          (objc-method-for sym lisp-func)
-          sym-name)))
-
-  (defun func-for-keypath (keypath)
-    ;; find the function represented by the keypath if it exists
-    (let ((func (assoc-aref path-trans (find-package :cl-user) keypath)))
-      (when (functionp func) func)))
-
-  (defun convert-path-element (pe)
-    (cond ((stringp pe)
-           pe)
-          ((functionp pe)
-           (find-or-make-func-keypath pe))))
-  
-  (defun convert-path-list (key-path)
-    ;; key-path        ::= <path-object> | ( <path-object>* )
-    ;; path-object     ::= <path-string> | <lisp-accessor-function>
-    ;; path-string     ::= "<path-elt-string>{.<path-string>}*
-    ;; path-elt-string ::= any legal string for Objective-C keypaths
-    (let ((path-strs  (if (listp key-path)
-                        (mapcar #'convert-path-element key-path)
-                        (list (convert-path-element key-path)))))
-      (dolist (ps (butlast path-strs))
-        (set-key-return ps :path))
-      (set-key-return (first (last path-strs)) :convert)
-      (coerce-obj (format nil "~{~a~^.~}" path-strs) 'ns:ns-string)))
-  
-) ;; end of definitions using path-trans assoc-array
-
 
 (defun convert-binding-option (bind-key)
   (ecase bind-key
@@ -474,44 +356,7 @@ An NSValueTransformer instance that is applied to the bound value.
                      self)
       nil)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; lisp-ptr-wrapper
-;;;
-;;; This is a class that encapsulates a pointer to a lisp object so we can pass this
-;;; off to an Objective-C view and know what it points to when we get it back later.
-;;; Added the ability to handle bindings.
-
 #|
-(defclass lisp-ptr-wrapper (ns:ns-object)
-  ((lpw-lisp-ptr :accessor lpw-lisp-ptr)
-   (lpw-controller :accessor lpw-controller)
-   (lpw-depth :accessor lpw-depth)
-   (lpw-parent :accessor lpw-parent))
-  (:metaclass ns:+ns-object))
-|#
-
-(objc:defmethod (#/copyWithZone: :id)
-                ((self lisp-ptr-wrapper) (zone (* #>NSZone)))
-  (when *log-bindings*
-    (ns-log-format "Copying wrapper for ~s" (lpw-lisp-ptr self)))
-  self)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Methods to support binding to Lisp slots and value translation between bound objects
-
-(let ((key-returns (make-hash-table :test #'equal)))
-  ;; key-returns tells us whether the value for a given key should be returned as a lisp-ptr-wrapper
-  ;; or an Objective-C value converted from the the lisp value retrieved using the key. The legal
-  ;; hash values are :path and :convert
-  
-  (defun set-key-return (key-str role)
-    (setf (gethash key-str key-returns) role))
-
-  (defun key-return (key-str)
-    (gethash key-str key-returns nil))
-
-)
-
 (let ((kvc-observed (make-instance 'assoc-array :rank 2 :tests (list #'eql #'equal)))
       (obj-wrappers (make-instance 'assoc-array :rank 2)))
   ;; this assoc-array keeps track of paths that are being observed and the
@@ -585,6 +430,8 @@ An NSValueTransformer instance that is applied to the bound value.
     kvc-observed)
 )
 ;; end of definitions with access to kvc-observed assoc-array
+
+|#
 
 (defun reader-selector (str)
   (ccl::%get-selector (ccl::load-objc-selector  str)))

@@ -84,23 +84,15 @@ package is defined in multiple files.
    url-at-index
 
    ;; binding-utils.lisp
-   *log-bindings*
    bind
    bound-slot-modified
    bound-slot-will-be-modified
    bound-to
-   did-change-value-for-key
    link-path-components
    linking-views
-   lisp-to-objc-keypathname
-   log-bindings
-   make-ptr-wrapper
-   objc-to-lisp-keypathname
    valid-binding-p
    valid-bindings
    when-observed
-   will-change-value-for-key
-   wrapper-for
 
    ;; class-convert.lisp
    class-actions
@@ -479,9 +471,21 @@ package is defined in multiple files.
    timed-wait-on-or-semaphore
    wait-on-or-semaphore
 
+   ;; path-trans.lisp
+   lisp-to-objc-keypathname
+   objc-to-lisp-keypathname
+
    ;; preferences.lisp
    set-user-default
    user-default
+
+   ;; ptr-wrapper.lisp
+   *log-bindings*
+   did-change-value-for-key
+   log-bindings
+   make-ptr-wrapper
+   will-change-value-for-key
+   wrapper-for
 
    ;; quick-window.lisp
    make-quick-window

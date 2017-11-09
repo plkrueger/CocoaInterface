@@ -37,7 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (require :interface-packages)
-  (require :ns-object-utils))
+  (require :path-trans))
 
 (in-package :iu)
 
