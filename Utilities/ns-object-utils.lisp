@@ -24,7 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (require :iu-classes)
   (require :ns-string-utils)
-  (require :binding-utils)
+  (require :assoc-array)
+  (require :path-trans)
   (require :nslog-utils)
   (require :date)
   (require :alert)
@@ -48,7 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ;;; Utility functions
 
 (defmethod class-conforms-to-protocol ((cl objc:objc-class-object) prot)
-  (let ((pr (#_NSProtocolFromString (coerce-obj prot 'ns:ns-string))))
+  (let ((pr (#_NSProtocolFromString (lisp-to-temp-nsstring prot))))
     (unless (eql pr (%null-ptr))
       (#/conformsToProtocol: cl pr))))
 
@@ -727,6 +728,43 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             (not macptr))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Methods dealing with ns-size ns-rect and ns-point objects
+
+(defmethod ns-rect-to-list ((obj ns:ns-rect) &key (size 4))
+  (if (= size 2)
+      (list (cons (ns:ns-rect-x obj) (ns:ns-rect-y obj)) (cons (ns:ns-rect-width obj) (ns:ns-rect-height obj)))
+      (list (ns:ns-rect-x obj) (ns:ns-rect-y obj) (ns:ns-rect-width obj) (ns:ns-rect-height obj))))
+
+(defmethod ns-size-to-list ((obj ns:ns-size))
+  (list (ns:ns-size-width obj) (ns:ns-size-height obj)))
+
+(defmethod ns-point-to-list ((obj ns:ns-point))
+  (list (ns:ns-point-x obj) (ns:ns-point-y obj)))
+
+(defmethod lisp-to-ns-rect ((obj cons))
+  (if (= (list-length obj) 2)
+      ;; have two point representation which may be either (x y) or (x . y)
+      (if (and (atom (cdar obj)) (atom (cdadr obj)))
+          (ns:make-ns-rect (or (caar obj) 0) (or (cdar obj) 0) (or (caadr obj) 0) (or (cdadr obj) 0))
+          (ns:make-ns-rect (or (caar obj) 0) (or (cadar obj) 0) (or (caadr obj) 0) (or (cadadr obj) 0)))
+      (ns:make-ns-rect (or (first obj) 0) (or (second obj) 0) (or (third obj) 0) (or (fourth obj) 0))))
+
+(defmethod lisp-to-ns-size ((obj cons))
+  (ns:make-ns-size (or (first obj) 0)
+                   (or (if (atom (cdr obj))
+                           (cdr obj)
+                           (second obj))
+                       0)))
+
+
+(defmethod lisp-to-ns-point ((obj cons))
+  (ns:make-ns-point (or (car obj) 0)
+                    (or (if (atom (cdr obj))
+                            (cdr obj)
+                            (second obj))
+                        0)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Methods dealing with conversion of lisp symbols
 ;;
 ;; Initially I implemented this as a concrete subclass of NSString, but it turned out that
@@ -916,10 +954,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (objc:defmethod (#/initWithCoder: :id)
                 ((self ns-misc) (decoder :id))
-  (let* ((obj-type (coerce-obj (#/decodeObjectForKey: decoder #@"objType") t))
+  (let* ((obj-type (ns-to-lisp-object (#/decodeObjectForKey: decoder #@"objType")))
          (obj-str (#/decodeObjectForKey: decoder #@"objString"))
          (obj (when (member obj-type (list 'ns:ns-rect 'ns:ns-size 'ns:ns-point))
-                (coerce-obj (coerce-obj (#/decodeObjectForKey: decoder #@"objAsList") 'list) obj-type))))
+                (let ((int-list (ns-to-lisp-list (#/decodeObjectForKey: decoder #@"objAsList"))))
+                  (case obj-type
+                    (ns:ns-rect (lisp-to-ns-rect int-list))
+                    (ns:ns-size (lisp-to-ns-size int-list))
+                    (ns:ns-point(lisp-to-ns-point int-list))
+                    (t nil))))))
     (setf (obj-str self) (ns-to-lisp-string obj-str))
     (setf (obj self) (or obj
                          (if (unreadable-object-string-p (obj-str self))
@@ -938,9 +981,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                             (ns-str self)
                             #@"objString")
     (when (member typ (list 'ns:ns-rect 'ns:ns-size 'ns:ns-point))
-      (#/encodeObject:forKey: coder
-                              (coerce-obj (coerce-obj (obj self) 'list) 'ns:ns-array)
-                              #@"objAsList"))))
+      (let ((int-list (case typ
+                        (ns:ns-rect (ns-rect-to-list (obj self)))
+                        (ns:ns-size (ns-size-to-list (obj self)))
+                        (ns:ns-point (ns-point-to-list (obj self)))
+                        (t nil))))
+        (#/encodeObject:forKey: coder
+                                (lisp-to-ns-array int-list)
+                                #@"objAsList")))))
 
 (defmethod lisp-to-ns-misc (obj)
   (make-instance 'ns-misc :obj obj))

@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   (require :coerce-obj)
   (require :ns-string-utils)
   (require :ns-object-utils)
+  (require :binding-utils)
   (require :nslog-utils)
   (require :undo)
   (require :assoc-array)

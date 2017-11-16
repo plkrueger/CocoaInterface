@@ -210,7 +210,7 @@ conversion functions that involve Objective-C objects.
    (iu::objc-to-std-instance obj)))
 
 (defmethod coerce-obj ((obj ns:ns-point)  (lisp-type (eql 'list)) &key &allow-other-keys)
-  (list (ns:ns-point-x obj) (ns:ns-point-y obj)))
+  (ns-point-to-list obj))
 
 (defmethod coerce-obj ((obj ns:ns-point)  (lisp-type (eql 'cons)) &key &allow-other-keys)
   (cons (ns:ns-point-x obj) (ns:ns-point-y obj)))
@@ -219,7 +219,7 @@ conversion functions that involve Objective-C objects.
   (values (ns:ns-point-x obj) (ns:ns-point-y obj)))
 
 (defmethod coerce-obj ((obj ns:ns-size)  (lisp-type (eql 'list)) &key &allow-other-keys)
-  (list (ns:ns-size-width obj) (ns:ns-size-height obj)))
+  (ns-size-to-list obj))
 
 (defmethod coerce-obj ((obj ns:ns-size)  (lisp-type (eql 'cons)) &key &allow-other-keys)
   (cons (ns:ns-size-width obj) (ns:ns-size-height obj)))
@@ -228,9 +228,7 @@ conversion functions that involve Objective-C objects.
   (values (ns:ns-size-width obj) (ns:ns-size-height obj)))
 
 (defmethod coerce-obj ((obj ns:ns-rect)  (lisp-type (eql 'list)) &key (size 4) &allow-other-keys)
-  (if (= size 2)
-      (list (cons (ns:ns-rect-x obj) (ns:ns-rect-y obj)) (cons (ns:ns-rect-width obj) (ns:ns-rect-height obj)))
-      (list (ns:ns-rect-x obj) (ns:ns-rect-y obj) (ns:ns-rect-width obj) (ns:ns-rect-height obj))))
+  (ns-rect-to-list obj :size size))
 
 (defmethod coerce-obj ((obj ns:ns-rect)  (lisp-type (eql :values)) &key &allow-other-keys)
   (values (ns:ns-rect-x obj) (ns:ns-rect-y obj) (ns:ns-rect-width obj) (ns:ns-rect-height obj)))
@@ -301,29 +299,16 @@ conversion functions that involve Objective-C objects.
 
 (defmethod coerce-obj ((obj cons) (type (eql 'ns:ns-point)) &key &allow-other-keys)
   (declare (ignore type))
-  (ns:make-ns-point (or (car obj) 0)
-                    (or (if (atom (cdr obj))
-                            (cdr obj)
-                            (second obj))
-                        0)))
+  (lisp-to-ns-point obj))
 
 (defmethod coerce-obj ((obj cons) (type (eql 'ns:ns-size)) &key &allow-other-keys)
   ;; works for (x y) or (x . y)
   (declare (ignore type))
-  (ns:make-ns-size (or (first obj) 0)
-                   (or (if (atom (cdr obj))
-                           (cdr obj)
-                           (second obj))
-                       0)))
+  (lisp-to-ns-size obj))
 
 (defmethod coerce-obj ((obj list) (type (eql 'ns:ns-rect)) &key &allow-other-keys)
   (declare (ignore type))
-  (if (= (list-length obj) 2)
-      ;; have two point representation which may be either (x y) or (x . y)
-      (if (and (atom (cdar obj)) (atom (cdadr obj)))
-          (ns:make-ns-rect (or (caar obj) 0) (or (cdar obj) 0) (or (caadr obj) 0) (or (cdadr obj) 0))
-          (ns:make-ns-rect (or (caar obj) 0) (or (cadar obj) 0) (or (caadr obj) 0) (or (cadadr obj) 0)))
-      (ns:make-ns-rect (or (first obj) 0) (or (second obj) 0) (or (third obj) 0) (or (fourth obj) 0))))
+  (lisp-to-ns-rect obj))
 
 (defun random-color ()
   (let ((red (random (gui::cgfloat 1.0)))

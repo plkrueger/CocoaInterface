@@ -95,5 +95,5 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   ;; This function returns a float that corresponds to the NSDecimalNumber 
   ;; or NSNumber that is passed in as the first argument. 
   (let ((loc (#/currentLocale ns:ns-locale)))
-    (float (read-from-string (coerce-obj (#/descriptionWithLocale: ns-dec-obj loc) 'string)))))
+    (float (read-from-string (ns-to-lisp-string (#/descriptionWithLocale: ns-dec-obj loc))))))
 

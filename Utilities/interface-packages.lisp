@@ -415,7 +415,11 @@ package is defined in multiple files.
    lisp-to-ns-object
    lisp-to-ns-misc
    lisp-to-ns-plist-dict
+   lisp-to-ns-point
+   lisp-to-ns-rect
    lisp-to-ns-sym
+   ns-rect-to-list
+   ns-size-to-list
    ns-to-lisp-array
    ns-to-lisp-assoc
    ns-to-lisp-classname
@@ -472,20 +476,18 @@ package is defined in multiple files.
    wait-on-or-semaphore
 
    ;; path-trans.lisp
+   *log-bindings*
+   did-change-value-for-key
    lisp-to-objc-keypathname
+   log-bindings
+   make-ptr-wrapper
    objc-to-lisp-keypathname
+   will-change-value-for-key
+   wrapper-for
 
    ;; preferences.lisp
    set-user-default
    user-default
-
-   ;; ptr-wrapper.lisp
-   *log-bindings*
-   did-change-value-for-key
-   log-bindings
-   make-ptr-wrapper
-   will-change-value-for-key
-   wrapper-for
 
    ;; quick-window.lisp
    make-quick-window
